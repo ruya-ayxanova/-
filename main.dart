@@ -51,6 +51,20 @@ String fmt(double h) {
   return '${(mm ~/ 60).toString().padLeft(2, '0')}:${(mm % 60).toString().padLeft(2, '0')}';
 }
 
+String err = '';
+
+Future<void> sched(int id, String title, tz.TZDateTime t) async {
+  try {
+    await plugin.zonedSchedule(id, title, '', t, details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime);
+  } catch (_) {
+    await plugin.zonedSchedule(id, title, '', t, details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime);
+  }
+}
+
 Future<void> schedule(City c) async {
   await plugin.cancelAll();
   final now = DateTime.now();
@@ -62,22 +76,48 @@ Future<void> schedule(City c) async {
       if (tm[i].isNaN) continue;
       final at = day.add(Duration(minutes: (tm[i] * 60).round()));
       if (!at.isAfter(now)) continue;
-      await plugin.zonedSchedule(id++, names[i], '', tz.TZDateTime.from(at, tz.local), details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime);
+      await sched(id++, names[i], tz.TZDateTime.from(at, tz.local));
     }
   }
 }
 
-Future<void> main() async {
+Future<void> setup() async {
+  try {
+    tzdata.initializeTimeZones();
+    var name = 'UTC';
+    try {
+      name = await FlutterTimezone.getLocalTimezone();
+    } catch (e) {
+      err += 'saat dilimi: $e\n';
+    }
+    try {
+      tz.setLocalLocation(tz.getLocation(name));
+    } catch (e) {
+      err += 'saat dilimi ($name): $e\n';
+    }
+    await plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+    final a = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    try {
+      await a?.requestNotificationsPermission();
+    } catch (e) {
+      err += 'bildirim izni: $e\n';
+    }
+    try {
+      await a?.requestExactAlarmsPermission();
+    } catch (e) {
+      err += 'alarm izni: $e\n';
+    }
+  } catch (e) {
+    err += 'başlatma: $e\n';
+  }
+}
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  tzdata.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation(await FlutterTimezone.getLocalTimezone()));
-  await plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
-  final a = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-  await a?.requestNotificationsPermission();
-  await a?.requestExactAlarmsPermission();
-  runApp(MaterialApp(title: 'تورک تقویمی و اذانی', theme: ThemeData(colorSchemeSeed: const Color(0xFF17302B), useMaterial3: true), home: const Home()));
+  runApp(MaterialApp(
+      title: 'تورک تقویمی و اذانی',
+      theme: ThemeData(colorSchemeSeed: const Color(0xFF17302B), useMaterial3: true),
+      home: const Home()));
 }
 
 class Home extends StatefulWidget {
@@ -98,31 +138,56 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> load() async {
-    final raw = await rootBundle.loadString('cities.txt');
-    cities = raw.trim().split('\n').map((l) {
-      final a = l.split('|');
-      return City(a[0], a[1], double.parse(a[2]), double.parse(a[3]));
-    }).toList();
-    final p = await SharedPreferences.getInstance();
-    final n = p.getString('city');
-    final c = cities.firstWhere((x) => x.name == n, orElse: () => cities.firstWhere((x) => x.name == 'İstanbul'));
-    await schedule(c);
-    setState(() {
-      city = c;
-      msg = 'Ezan 14 gün için kuruldu';
-    });
+    await setup();
+    try {
+      final raw = await rootBundle.loadString('cities.txt');
+      cities = raw.trim().split('\n').map((l) {
+        final a = l.split('|');
+        return City(a[0], a[1], double.parse(a[2]), double.parse(a[3]));
+      }).toList();
+    } catch (e) {
+      err += 'şehir listesi: $e\n';
+    }
+    if (cities.isEmpty) {
+      setState(() {});
+      return;
+    }
+    var c = cities.first;
+    try {
+      final p = await SharedPreferences.getInstance();
+      final n = p.getString('city');
+      c = cities.firstWhere((x) => x.name == n,
+          orElse: () => cities.firstWhere((x) => x.name == 'İstanbul', orElse: () => cities.first));
+    } catch (e) {
+      err += 'kayıt: $e\n';
+    }
+    setState(() => city = c);
+    try {
+      await schedule(c);
+      setState(() => msg = 'Ezan 14 gün için kuruldu');
+    } catch (e) {
+      setState(() => err += 'alarm kurma: $e\n');
+    }
   }
 
   Future<void> test() async {
-    await plugin.zonedSchedule(9999, 'Deneme', '', tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10)), details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime);
-    setState(() => msg = '10 saniye sonra ezan çalmalı');
+    try {
+      await sched(9999, 'Deneme', tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10)));
+      setState(() => msg = '10 saniye sonra ezan çalmalı');
+    } catch (e) {
+      setState(() => err += 'deneme: $e\n');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (city == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (city == null) {
+      return Scaffold(
+          body: Center(
+              child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: err.isEmpty ? const CircularProgressIndicator() : SelectableText(err))));
+    }
     final tm = calc(DateTime.now(), city!.lat, city!.lng);
     return Scaffold(
       appBar: AppBar(title: const Text('تورک تقویمی و اذانی')),
@@ -132,19 +197,28 @@ class _HomeState extends State<Home> {
           value: city,
           items: [for (final x in cities) DropdownMenuItem(value: x, child: Text('${x.group}  ${x.name}'))],
           onChanged: (x) async {
-            final p = await SharedPreferences.getInstance();
-            await p.setString('city', x!.name);
-            await schedule(x);
-            setState(() {
-              city = x;
-              msg = 'Ezan 14 gün için kuruldu';
-            });
+            try {
+              final p = await SharedPreferences.getInstance();
+              await p.setString('city', x!.name);
+              await schedule(x);
+              setState(() {
+                city = x;
+                msg = 'Ezan 14 gün için kuruldu';
+              });
+            } catch (e) {
+              setState(() {
+                city = x;
+                err += 'şehir değiştirme: $e\n';
+              });
+            }
           },
         ),
-        for (var i = 0; i < 8; i++) ListTile(title: Text(names[i]), trailing: Text(fmt(tm[i]), style: const TextStyle(fontSize: 20))),
+        for (var i = 0; i < 8; i++)
+          ListTile(title: Text(names[i]), trailing: Text(fmt(tm[i]), style: const TextStyle(fontSize: 20))),
         const SizedBox(height: 12),
         FilledButton(onPressed: test, child: const Text('Ezanı 10 saniye sonra dene')),
         Padding(padding: const EdgeInsets.only(top: 12), child: Text(msg)),
+        if (err.isNotEmpty) SelectableText(err, style: const TextStyle(color: Colors.red)),
       ]),
     );
   }
