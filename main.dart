@@ -81,12 +81,13 @@ Future<void> schedule(City c) async {
   }
 }
 
-Future<void> setup() async {
+Future<void> setup(void Function(String) mark) async {
   try {
     tzdata.initializeTimeZones();
     var name = 'UTC';
     try {
-      name = await FlutterTimezone.getLocalTimezone();
+      mark('saat dilimi');
+      name = await FlutterTimezone.getLocalTimezone().timeout(const Duration(seconds: 6));
     } catch (e) {
       err += 'saat dilimi: $e\n';
     }
@@ -95,20 +96,26 @@ Future<void> setup() async {
     } catch (e) {
       err += 'saat dilimi ($name): $e\n';
     }
-    await plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
-    final a = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    try {
-      await a?.requestNotificationsPermission();
-    } catch (e) {
-      err += 'bildirim izni: $e\n';
-    }
-    try {
-      await a?.requestExactAlarmsPermission();
-    } catch (e) {
-      err += 'alarm izni: $e\n';
-    }
+    mark('bildirim hazırlığı');
+    await plugin
+        .initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')))
+        .timeout(const Duration(seconds: 6));
   } catch (e) {
     err += 'başlatma: $e\n';
+  }
+}
+
+Future<void> perms() async {
+  final a = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+  try {
+    await a?.requestNotificationsPermission().timeout(const Duration(seconds: 30));
+  } catch (e) {
+    err += 'bildirim izni: $e\n';
+  }
+  try {
+    await a?.requestExactAlarmsPermission().timeout(const Duration(seconds: 30));
+  } catch (e) {
+    err += 'alarm izni: $e\n';
   }
 }
 
@@ -130,6 +137,11 @@ class _HomeState extends State<Home> {
   List<City> cities = [];
   City? city;
   String msg = '';
+  String step = 'başlıyor';
+
+  void mark(String x) {
+    if (mounted) setState(() => step = x);
+  }
 
   @override
   void initState() {
@@ -138,7 +150,8 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> load() async {
-    await setup();
+    await setup(mark);
+    mark('şehir listesi');
     try {
       final raw = await rootBundle.loadString('cities.txt');
       cities = raw.trim().split('\n').map((l) {
@@ -152,9 +165,10 @@ class _HomeState extends State<Home> {
       setState(() {});
       return;
     }
+    mark('kayıtlı şehir');
     var c = cities.first;
     try {
-      final p = await SharedPreferences.getInstance();
+      final p = await SharedPreferences.getInstance().timeout(const Duration(seconds: 6));
       final n = p.getString('city');
       c = cities.firstWhere((x) => x.name == n,
           orElse: () => cities.firstWhere((x) => x.name == 'İstanbul', orElse: () => cities.first));
@@ -162,6 +176,7 @@ class _HomeState extends State<Home> {
       err += 'kayıt: $e\n';
     }
     setState(() => city = c);
+    await perms();
     try {
       await schedule(c);
       setState(() => msg = 'Ezan 14 gün için kuruldu');
@@ -186,7 +201,12 @@ class _HomeState extends State<Home> {
           body: Center(
               child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: err.isEmpty ? const CircularProgressIndicator() : SelectableText(err))));
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text('Adım: $step'),
+                    if (err.isNotEmpty) SelectableText(err, style: const TextStyle(color: Colors.red)),
+                  ]))));
     }
     final tm = calc(DateTime.now(), city!.lat, city!.lng);
     return Scaffold(
