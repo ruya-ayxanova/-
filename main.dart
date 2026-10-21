@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:math' as m;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -154,7 +156,9 @@ List<int> d2j(int jdn) {
 List<int> toJ(DateTime d) => d2j(g2d(d.year, d.month, d.day));
 int jlen(int jy, int jm) => jm <= 6 ? 31 : (jm <= 11 ? 30 : (jalCal(jy)[0] == 0 ? 30 : 29));
 String dkey(DateTime d) => '${d.year}-${d.month}-${d.day}';
-String dateText(DateTime d) {
+String dateText(DateTime d) => '${wdn[d.weekday - 1]} - ${dateText0(d)}';
+
+String dateText0(DateTime d) {
   final j = toJ(d);
   return '${j[2]} ${mj[j[1] - 1]} ${j[0]} - ${d.day} ${mg[d.month - 1]} ${d.year}';
 }
@@ -283,6 +287,12 @@ const _t = <String, String>{
   "Not kutusu": "Qeyd xanası|قئید خاناسی|کادر یادداشت|Note box|مربع الملاحظات|Поле заметки|Notizfeld|Champ de note|Campo de nota|Campo nota|Campo de nota|Pole notatki",
   "Ezan bildiriminde tarihi göster": "Azan bildirişində tarixi göstər|اذان بیلدیریشینده تاریخی گؤستر|نمایش تاریخ در اعلان اذان|Show date in adhan notification|عرض التاريخ في إشعار الأذان|Показывать дату в уведомлении|Datum in der Adhan-Benachrichtigung anzeigen|Afficher la date dans la notification de l'adhan|Mostrar la fecha en la notificación del adhan|Mostra la data nella notifica dell'adhan|Mostrar a data na notificação do adhan|Pokaż datę w powiadomieniu adhanu",
   "Bildirimde takvimi göster": "Bildirişdə təqvimi göstər|بیلدیریشده تقویمی گؤستر|نمایش تقویم در اعلان|Show calendar in notification|عرض التقويم في الإشعار|Показывать календарь в уведомлении|Kalender in Benachrichtigung anzeigen|Afficher le calendrier dans la notification|Mostrar el calendario en la notificación|Mostra il calendario nella notifica|Mostrar o calendário na notificação|Pokaż kalendarz w powiadomieniu",
+  "Çalar saat": "Zəngli saat|زنگلی ساعات|ساعت زنگ‌دار|Alarm clock|المنبه|Будильник|Wecker|Réveil|Despertador|Sveglia|Despertador|Budzik",
+  "Analog": "Analoq|آنالوق|آنالوگ|Analog|تناظري|Аналоговые|Analog|Analogique|Analógico|Analogico|Analógico|Analogowy",
+  "Dijital": "Rəqəmsal|رقمسال|دیجیتال|Digital|رقمي|Цифровые|Digital|Numérique|Digital|Digitale|Digital|Cyfrowy",
+  "İkisi birden": "Hər ikisi|هر ایکیسی|هر دو|Both|كلاهما|Оба|Beides|Les deux|Ambos|Entrambi|Ambos|Oba",
+  "Henüz alarm yok": "Hələ zəng yoxdur|هله زنگ یوخدور|هنوز آلارمی نیست|No alarms yet|لا توجد منبهات بعد|Будильников пока нет|Noch keine Wecker|Aucune alarme pour le moment|Aún no hay alarmas|Nessuna sveglia|Nenhum alarme ainda|Brak budzików",
+  "Bildirim çubuğunda bugünün tarihini göster": "Bildiriş panelində bugünkü tarixi göstər|بیلدیریش پانئلینده بوگونکو تاریخی گؤستر|نمایش تاریخ امروز در نوار اعلان|Show today's date in the notification bar|عرض تاريخ اليوم في شريط الإشعارات|Показывать сегодняшнюю дату в шторке|Heutiges Datum in der Benachrichtigungsleiste anzeigen|Afficher la date du jour dans la barre de notifications|Mostrar la fecha de hoy en la barra de notificaciones|Mostra la data di oggi nella barra delle notifiche|Mostrar a data de hoje na barra de notificações|Pokaż dzisiejszą datę na pasku powiadomień",
   "Ezan 14 gün için kuruldu": "Azan 14 gün üçün quruldu|اذان ۱۴ گون اوچون قورولدو|اذان برای ۱۴ روز تنظیم شد|Adhan set for 14 days|تم ضبط الأذان لمدة 14 يوماً|Азан настроен на 14 дней|Adhan für 14 Tage eingestellt|Adhan réglé pour 14 jours|Adhan configurado para 14 días|Adhan impostato per 14 giorni|Adhan definido para 14 dias|Adhan ustawiony na 14 dni",
   "10 saniye sonra ezan çalmalı": "10 saniyə sonra azan oxunmalıdır|۱۰ ثانیه سونرا اذان اوخونمالیدیر|اذان تا ۱۰ ثانیه دیگر پخش می‌شود|Adhan should play in 10 seconds|سيُشغَّل الأذان بعد 10 ثوانٍ|Азан прозвучит через 10 секунд|Adhan sollte in 10 Sekunden erklingen|L'adhan devrait retentir dans 10 secondes|El adhan sonará en 10 segundos|L'adhan dovrebbe partire tra 10 secondi|O adhan deve tocar em 10 segundos|Adhan zabrzmi za 10 sekund",
   "Ayarlar kaydedildi, ezan yeniden kuruldu": "Ayarlar saxlandı, azan yenidən quruldu|آیارلار ساخلاندی، اذان یئنیدن قورولدو|تنظیمات ذخیره و اذان دوباره تنظیم شد|Settings saved, adhan rescheduled|تم الحفظ وإعادة ضبط الأذان|Настройки сохранены, азан перенастроен|Einstellungen gespeichert, Adhan neu geplant|Paramètres enregistrés, adhan reprogrammé|Ajustes guardados, adhan reprogramado|Impostazioni salvate, adhan riprogrammato|Configurações salvas, adhan reagendado|Ustawienia zapisane, adhan zaplanowany ponownie",
@@ -382,7 +392,25 @@ const _d = [
   "Pon|Wt|Śr|Czw|Pt|Sob|Nie",
 ];
 
+const _wd = [
+  "Pazartesi|Salı|Çarşamba|Perşembe|Cuma|Cumartesi|Pazar",
+  "Bazar ertəsi|Çərşənbə axşamı|Çərşənbə|Cümə axşamı|Cümə|Şənbə|Bazar",
+  "دوز گونو|آرا گون|اود گونو|سو گونو|آینی گونو|یئل لی گون|سود گونو",
+  "دوشنبه|سه‌شنبه|چهارشنبه|پنجشنبه|جمعه|شنبه|یکشنبه",
+  "Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday",
+  "الإثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت|الأحد",
+  "Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье",
+  "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag",
+  "Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi|Dimanche",
+  "Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo",
+  "Lunedì|Martedì|Mercoledì|Giovedì|Venerdì|Sabato|Domenica",
+  "Segunda-feira|Terça-feira|Quarta-feira|Quinta-feira|Sexta-feira|Sábado|Domingo",
+  "Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela",
+];
+List<String> wdn = _wd[2].split('|');
+
 void applyNames() {
+  wdn = _wd[nameIdx].split('|');
   names = _p[nameIdx].split('|');
   mg = _g[nameIdx].split('|');
   mj = _j[nameIdx].split('|');
@@ -392,13 +420,79 @@ void applyNames() {
 
 String calText(DateTime d) {
   final j = toJ(d), h = toH(d, lunarAdj);
-  final b = StringBuffer('${j[2]} ${mj[j[1] - 1]} ${j[0]}\n${d.day} ${mg[d.month - 1]} ${d.year}\n${h[2]} ${hn[h[1] - 1]} ${h[0]}');
+  final b = StringBuffer('${wdn[d.weekday - 1]}\n${j[2]} ${mj[j[1] - 1]} ${j[0]}\n${d.day} ${mg[d.month - 1]} ${d.year}\n${h[2]} ${hn[h[1] - 1]} ${h[0]}');
   for (final e in {...eventsFor(d, true), ...eventsFor(d, false)}) {
     b.write('\n$e');
   }
   final n = notes[dkey(d)];
   if (n != null && n.trim().isNotEmpty) b.write('\n${T('Not')}: $n');
   return b.toString();
+}
+
+bool showDateNotif = true;
+int clockMode = 2;
+
+class Alarm {
+  int h, m;
+  bool on;
+  Alarm(this.h, this.m, this.on);
+}
+
+List<Alarm> alarms = [];
+
+Future<void> persistAlarms() async {
+  try {
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('alarms', alarms.map((a) => '${a.h}:${a.m}:${a.on ? 1 : 0}').toList());
+  } catch (_) {}
+}
+
+NotificationDetails dateDetails(int ms) => NotificationDetails(
+      android: AndroidNotificationDetails('tarih', 'Bugünün tarihi',
+          channelDescription: 'Kalıcı tarih bildirimi',
+          importance: Importance.low,
+          priority: Priority.low,
+          ongoing: true,
+          autoCancel: false,
+          playSound: false,
+          enableVibration: false,
+          showWhen: false,
+          timeoutAfter: ms),
+    );
+
+final alarmDetails = NotificationDetails(
+  android: AndroidNotificationDetails('alarm', 'Çalar saat',
+      channelDescription: 'Alarmlar',
+      importance: Importance.max,
+      priority: Priority.high,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      additionalFlags: Int32List.fromList(<int>[4]),
+      category: AndroidNotificationCategory.alarm),
+);
+
+Future<void> scheduleAlarms() async {
+  for (var i = 0; i < 50; i++) {
+    await plugin.cancel(8000 + i);
+  }
+  for (var i = 0; i < alarms.length; i++) {
+    final a = alarms[i];
+    if (!a.on) continue;
+    final now = tz.TZDateTime.now(tz.local);
+    var at = tz.TZDateTime(tz.local, now.year, now.month, now.day, a.h, a.m);
+    if (!at.isAfter(now)) at = at.add(const Duration(days: 1));
+    final label = '${a.h.toString().padLeft(2, '0')}:${a.m.toString().padLeft(2, '0')}';
+    try {
+      await plugin.zonedSchedule(8000 + i, T('Çalar saat'), label, at, alarmDetails,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time);
+    } catch (_) {
+      await plugin.zonedSchedule(8000 + i, T('Çalar saat'), label, at, alarmDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time);
+    }
+  }
 }
 
 String err = '';
@@ -435,6 +529,19 @@ Future<void> schedule(City c) async {
       }
     }
   }
+  if (showDateNotif) {
+    for (var k = 0; k < 14; k++) {
+      final day = DateTime(now.year, now.month, now.day + k);
+      final title = wdn[day.weekday - 1], body = dateText0(day);
+      if (k == 0) {
+        final nextMid = DateTime(now.year, now.month, now.day + 1, 0, 1);
+        await plugin.show(7000, title, body, dateDetails(nextMid.difference(now).inMilliseconds));
+      } else {
+        await sched(7000 + k, title, body, tz.TZDateTime.from(DateTime(day.year, day.month, day.day, 0, 1), tz.local), dateDetails(86340000));
+      }
+    }
+  }
+  await scheduleAlarms();
 }
 
 Future<void> setup(void Function(String) mark) async {
@@ -596,6 +703,12 @@ class _HomeState extends State<Home> {
       showNote = p.getBool('showNote') ?? true;
       notifDate = p.getBool('notifDate') ?? true;
       showCalNotif = p.getBool('calNotif') ?? true;
+      showDateNotif = p.getBool('dateNotif') ?? true;
+      clockMode = p.getInt('clockMode') ?? 2;
+      alarms = (p.getStringList('alarms') ?? []).map((e) {
+        final x = e.split(':');
+        return Alarm(int.parse(x[0]), int.parse(x[1]), x[2] == '1');
+      }).toList();
       final sd = p.getInt('seed');
       if (sd != null) seedColor.value = Color(sd);
       final ns = p.getString('notes');
@@ -796,7 +909,10 @@ class _HomeState extends State<Home> {
         ? '${hs[2]} ${hn[hs[1] - 1]} ${hs[0]}'
         : (jal ? '${j[2]} ${mj[j[1] - 1]} ${j[0]}' : '${sel.day} ${mg[sel.month - 1]} ${sel.year}');
     return Scaffold(
-      appBar: AppBar(title: const Text('تورک تقویمی و اذانی'), actions: [IconButton(icon: const Icon(Icons.settings), onPressed: openSettings)]),
+      appBar: AppBar(title: const Text('تورک تقویمی و اذانی'), actions: [
+        IconButton(icon: const Icon(Icons.access_time), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClockPage()))),
+        IconButton(icon: const Icon(Icons.settings), onPressed: openSettings),
+      ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         SegmentedButton<int>(
           segments: const [
@@ -948,6 +1064,7 @@ class _SettingsState extends State<SettingsPage> {
         const ListTile(title: Tx('Bildirimler')),
         flag(T('Ezan bildiriminde tarihi göster'), 'notifDate', notifDate, (x) => notifDate = x),
         flag(T('Bildirimde takvimi göster'), 'calNotif', showCalNotif, (x) => showCalNotif = x),
+        flag(T('Bildirim çubuğunda bugünün tarihini göster'), 'dateNotif', showDateNotif, (x) => showDateNotif = x),
       ];
     } else {
       body = [
@@ -1212,6 +1329,132 @@ class _LangState extends State<LanguagePage> {
         const ListTile(title: Tx('Ay, gün ve vakit adlarının dili')),
         for (var i = 0; i < langNames.length; i++)
           RadioListTile<int>(title: Text(langNames[i]), value: i, groupValue: nameIdx, onChanged: (v) => setNames(v!)),
+      ]),
+    );
+  }
+}
+
+class ClockPainter extends CustomPainter {
+  final DateTime t;
+  final Color c, accent;
+  ClockPainter(this.t, this.c, this.accent);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final ctr = size.center(Offset.zero);
+    final r = size.width / 2 - 6;
+    canvas.drawCircle(ctr, r, Paint()..color = c..style = PaintingStyle.stroke..strokeWidth = 4);
+    final tick = Paint()..color = c..strokeWidth = 3;
+    for (var i = 0; i < 12; i++) {
+      final a = i * m.pi / 6;
+      final d = Offset(m.sin(a), -m.cos(a));
+      canvas.drawLine(ctr + d * (r - 14), ctr + d * (r - 4), tick);
+    }
+    void hand(double ang, double len, double w, Color col) {
+      canvas.drawLine(ctr, ctr + Offset(m.sin(ang), -m.cos(ang)) * len, Paint()..color = col..strokeWidth = w..strokeCap = StrokeCap.round);
+    }
+
+    hand((t.hour % 12 + t.minute / 60) * m.pi / 6, r * .5, 6, c);
+    hand((t.minute + t.second / 60) * m.pi / 30, r * .75, 4, c);
+    hand(t.second * m.pi / 30, r * .85, 2, accent);
+    canvas.drawCircle(ctr, 6, Paint()..color = accent);
+  }
+
+  @override
+  bool shouldRepaint(ClockPainter o) => true;
+}
+
+class ClockPage extends StatefulWidget {
+  const ClockPage({super.key});
+  @override
+  State<ClockPage> createState() => _ClockState();
+}
+
+class _ClockState extends State<ClockPage> {
+  Timer? tick;
+  DateTime now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    tick?.cancel();
+    super.dispose();
+  }
+
+  String two(int v) => v.toString().padLeft(2, '0');
+
+  Future<void> changed() async {
+    await persistAlarms();
+    try {
+      await scheduleAlarms();
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
+  Future<void> addAlarm() async {
+    final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (t == null) return;
+    alarms.add(Alarm(t.hour, t.minute, true));
+    await changed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: const Tx('Çalar saat')),
+      floatingActionButton: FloatingActionButton(onPressed: addAlarm, child: const Icon(Icons.add_alarm)),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 0, label: Tx('Analog')),
+            ButtonSegment(value: 1, label: Tx('Dijital')),
+            ButtonSegment(value: 2, label: Tx('İkisi birden')),
+          ],
+          selected: {clockMode},
+          onSelectionChanged: (s) async {
+            clockMode = s.first;
+            setState(() {});
+            try {
+              final p = await SharedPreferences.getInstance();
+              await p.setInt('clockMode', clockMode);
+            } catch (_) {}
+          },
+        ),
+        const SizedBox(height: 16),
+        if (clockMode != 1) Center(child: SizedBox(width: 260, height: 260, child: CustomPaint(painter: ClockPainter(now, cs.onSurface, cs.primary)))),
+        if (clockMode != 0)
+          Center(child: Text('${two(now.hour)}:${two(now.minute)}:${two(now.second)}', style: Theme.of(context).textTheme.displayMedium)),
+        const SizedBox(height: 8),
+        Center(child: Text('${wdn[now.weekday - 1]} - ${dateText0(now)}', textAlign: TextAlign.center)),
+        const Divider(height: 32),
+        if (alarms.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Center(child: Tx('Henüz alarm yok'))),
+        for (var i = 0; i < alarms.length; i++)
+          ListTile(
+            title: Text('${two(alarms[i].h)}:${two(alarms[i].m)}', style: const TextStyle(fontSize: 28)),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              Switch(
+                  value: alarms[i].on,
+                  onChanged: (v) {
+                    alarms[i].on = v;
+                    changed();
+                  }),
+              IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () {
+                    alarms.removeAt(i);
+                    changed();
+                  }),
+            ]),
+          ),
+        const SizedBox(height: 72),
       ]),
     );
   }
