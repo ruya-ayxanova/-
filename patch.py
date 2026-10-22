@@ -73,21 +73,38 @@ open('android/app/proguard-rules.pro', 'w').write('''-keep class com.dexterous.f
 ''')
 
 # Uygulama simgesi: icon.png varsa tüm boyutlara çevir
-if os.path.exists('icon.png'):
+SIZES = [('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)]
+if not os.path.exists('icon.png'):
+    print('UYARI: icon.png reponun ana klasorunde bulunamadi, varsayilan Flutter simgesi kalacak')
+else:
+    for dname, sz in SIZES:
+        os.makedirs('android/app/src/main/res/mipmap-%s' % dname, exist_ok=True)
+    done = False
     try:
-        import subprocess, sys
         try:
             from PIL import Image
         except ImportError:
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--break-system-packages', 'pillow'])
             from PIL import Image
         im = Image.open('icon.png').convert('RGBA')
-        for dname, sz in [('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)]:
-            p = 'android/app/src/main/res/mipmap-%s/ic_launcher.png' % dname
-            os.makedirs(os.path.dirname(p), exist_ok=True)
-            im.resize((sz, sz), Image.LANCZOS).save(p)
+        for dname, sz in SIZES:
+            im.resize((sz, sz), Image.LANCZOS).save('android/app/src/main/res/mipmap-%s/ic_launcher.png' % dname)
+        done = True
     except Exception as e:
-        print('Simge atlandı:', e)
+        print('Pillow ile simge uretilemedi:', e)
+    if not done and FF:
+        try:
+            for dname, sz in SIZES:
+                subprocess.run([FF, '-y', '-loglevel', 'error', '-i', 'icon.png', '-vf', 'scale=%d:%d' % (sz, sz),
+                                'android/app/src/main/res/mipmap-%s/ic_launcher.png' % dname], check=True)
+            done = True
+        except Exception as e:
+            print('ffmpeg ile simge uretilemedi:', e)
+    # Android 8+ uyarlanabilir simge varsa PNG'nin onune gecer: kaldir
+    ad = 'android/app/src/main/res/mipmap-anydpi-v26'
+    if os.path.isdir(ad):
+        shutil.rmtree(ad)
+    print('SIMGE URETILDI' if done else 'UYARI: simge uretilemedi')
 
 # Release derlemesinde kod küçültmeyi (R8) Flutter eklentisi de açabiliyor: derleme ayarı
 # yüklendikten SONRA tekrar kapat ve koruma kurallarını ekle
