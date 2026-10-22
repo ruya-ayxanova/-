@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:math' as m;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show rootBundle, HapticFeedback;
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,6 +57,7 @@ Future<void> saveAdhanPrefs() async {
     await p.setInt('rmin', remindMin);
     await p.setInt('ladj', lunarAdj);
     await p.setStringList('remind', remindIdx.map((e) => e.toString()).toList());
+    await p.setString('vol', jsonEncode(vol.map((k, v) => MapEntry(k.toString(), v))));
     await p.setStringList('adhan', adhanIdx.map((e) => e.toString()).toList());
     await p.setString('snd', jsonEncode(snd.map((k, v) => MapEntry(k.toString(), v))));
   } catch (_) {}
@@ -235,6 +237,15 @@ const irProv = <String, String>{'تهران': 'تهران', 'اسلامشهر': 
 const langNames = ['Türkçe', 'Azərbaycan dili', 'آذربایجان دیلی', 'فارسی', 'English', 'العربية', 'Русский', 'Deutsch', 'Français', 'Español', 'Italiano', 'Português', 'Polski'];
 int langIdx = 0, nameIdx = 2;
 final langRev = ValueNotifier<int>(0);
+final textScale = ValueNotifier<double>(1.0);
+const volLevels = [25, 50, 75, 100, 150];
+Map<int, int> vol = {};
+String resFor(int i) {
+  final base = snd[i] ?? defSound();
+  final v = vol[i] ?? 100;
+  return v == 100 ? base : '${base}_v$v';
+}
+
 bool get rtl => langIdx == 2 || langIdx == 3 || langIdx == 5;
 
 const _t = <String, String>{
@@ -293,6 +304,16 @@ const _t = <String, String>{
   "İkisi birden": "Hər ikisi|هر ایکیسی|هر دو|Both|كلاهما|Оба|Beides|Les deux|Ambos|Entrambi|Ambos|Oba",
   "Henüz alarm yok": "Hələ zəng yoxdur|هله زنگ یوخدور|هنوز آلارمی نیست|No alarms yet|لا توجد منبهات بعد|Будильников пока нет|Noch keine Wecker|Aucune alarme pour le moment|Aún no hay alarmas|Nessuna sveglia|Nenhum alarme ainda|Brak budzików",
   "Bildirim çubuğunda bugünün tarihini göster": "Bildiriş panelində bugünkü tarixi göstər|بیلدیریش پانئلینده بوگونکو تاریخی گؤستر|نمایش تاریخ امروز در نوار اعلان|Show today's date in the notification bar|عرض تاريخ اليوم في شريط الإشعارات|Показывать сегодняшнюю дату в шторке|Heutiges Datum in der Benachrichtigungsleiste anzeigen|Afficher la date du jour dans la barre de notifications|Mostrar la fecha de hoy en la barra de notificaciones|Mostra la data di oggi nella barra delle notifiche|Mostrar a data de hoje na barra de notificações|Pokaż dzisiejszą datę na pasku powiadomień",
+  "Kıble": "Qiblə|قبله|قبله|Qibla|القبلة|Кибла|Qibla|Qibla|Qibla|Qibla|Qibla|Kibla",
+  "Kâbe'ye uzaklık": "Kəbəyə məsafə|کعبه یه مسافه|فاصله تا کعبه|Distance to the Kaaba|المسافة إلى الكعبة|Расстояние до Каабы|Entfernung zur Kaaba|Distance jusqu'à la Kaaba|Distancia a la Kaaba|Distanza dalla Kaaba|Distância até a Caaba|Odległość do Kaaby",
+  "Pusula sensörü bulunamadı": "Kompas sensoru tapılmadı|کومپاس سنسورو تاپیلمادی|حسگر قطب‌نما پیدا نشد|Compass sensor not found|لم يتم العثور على مستشعر البوصلة|Датчик компаса не найден|Kompasssensor nicht gefunden|Capteur de boussole introuvable|No se encontró el sensor de brújula|Sensore bussola non trovato|Sensor de bússola não encontrado|Nie znaleziono czujnika kompasu",
+  "Pusulayı kalibre etmek için telefonu 8 şeklinde hareket ettirin": "Kompası kalibrləmək üçün telefonu 8 şəklində hərəkət etdirin|کومپاسی کالیبره ائتمک اوچون تلفونو ۸ شکلینده هره که ائتدیرین|برای کالیبره کردن قطب‌نما گوشی را به شکل ۸ حرکت دهید|Move the phone in a figure 8 to calibrate the compass|حرّك الهاتف على شكل 8 لمعايرة البوصلة|Для калибровки компаса двигайте телефон восьмёркой|Bewegen Sie das Telefon in einer 8, um den Kompass zu kalibrieren|Bougez le téléphone en forme de 8 pour calibrer la boussole|Mueva el teléfono en forma de 8 para calibrar la brújula|Muovi il telefono a forma di 8 per calibrare la bussola|Mova o telefone em forma de 8 para calibrar a bússola|Poruszaj telefonem w kształcie ósemki, aby skalibrować kompas",
+  "Kıble yönündesiniz": "Qibləyə dönmüsünüz|قبله یه دؤنموسونوز|رو به قبله هستید|You are facing the Qibla|أنت متجه نحو القبلة|Вы смотрите в сторону Киблы|Sie blicken Richtung Qibla|Vous faites face à la Qibla|Está mirando hacia la Qibla|Sei rivolto verso la Qibla|Você está virado para a Qibla|Jesteś zwrócony w stronę Kibli",
+  "Yazı boyutu": "Yazı ölçüsü|یازی اؤلچوسو|اندازه متن|Text size|حجم الخط|Размер текста|Textgröße|Taille du texte|Tamaño del texto|Dimensione del testo|Tamanho do texto|Rozmiar tekstu",
+  "Sıfırla": "Sıfırla|سیفیرلا|بازنشانی|Reset|إعادة تعيين|Сбросить|Zurücksetzen|Réinitialiser|Restablecer|Ripristina|Redefinir|Resetuj",
+  "Örnek metin: Ezan vakitleri ve takvim": "Nümunə mətn: Azan vaxtları və təqvim|نمونه متن: اذان واختلاری و تقویم|متن نمونه: اوقات اذان و تقویم|Sample text: Prayer times and calendar|نص تجريبي: أوقات الأذان والتقويم|Пример текста: время намаза и календарь|Beispieltext: Gebetszeiten und Kalender|Texte d'exemple : horaires de prière et calendrier|Texto de ejemplo: horarios de oración y calendario|Testo di esempio: orari di preghiera e calendario|Texto de exemplo: horários de oração e calendário|Przykładowy tekst: czasy modlitw i kalendarz",
+  "Ezan ses seviyesi": "Azan səs səviyyəsi|اذان سس سویه سی|میزان صدای اذان|Adhan volume|مستوى صوت الأذان|Громкость азана|Adhan-Lautstärke|Volume de l'adhan|Volumen del adhan|Volume dell'adhan|Volume do adhan|Głośność adhanu",
+  "Ses seviyesi telefonun alarm sesiyle birlikte çalışır": "Səs səviyyəsi telefonun zəng səsi ilə birlikdə işləyir|سس سویه سی تلفونون آلارم سسی ایله بیرلیکده ایشله یر|میزان صدا همراه با صدای آلارم گوشی عمل می‌کند|Volume works together with the phone's alarm volume|يعمل مستوى الصوت مع مستوى صوت المنبه في الهاتف|Громкость работает вместе с громкостью будильника телефона|Die Lautstärke wirkt zusammen mit der Alarmlautstärke des Telefons|Le volume fonctionne avec le volume des alarmes du téléphone|El volumen funciona junto con el volumen de alarma del teléfono|Il volume agisce insieme al volume sveglia del telefono|O volume funciona junto com o volume de alarme do telefone|Głośność działa razem z głośnością alarmu telefonu",
   "Ezan 14 gün için kuruldu": "Azan 14 gün üçün quruldu|اذان ۱۴ گون اوچون قورولدو|اذان برای ۱۴ روز تنظیم شد|Adhan set for 14 days|تم ضبط الأذان لمدة 14 يوماً|Азан настроен на 14 дней|Adhan für 14 Tage eingestellt|Adhan réglé pour 14 jours|Adhan configurado para 14 días|Adhan impostato per 14 giorni|Adhan definido para 14 dias|Adhan ustawiony na 14 dni",
   "10 saniye sonra ezan çalmalı": "10 saniyə sonra azan oxunmalıdır|۱۰ ثانیه سونرا اذان اوخونمالیدیر|اذان تا ۱۰ ثانیه دیگر پخش می‌شود|Adhan should play in 10 seconds|سيُشغَّل الأذان بعد 10 ثوانٍ|Азан прозвучит через 10 секунд|Adhan sollte in 10 Sekunden erklingen|L'adhan devrait retentir dans 10 secondes|El adhan sonará en 10 segundos|L'adhan dovrebbe partire tra 10 secondi|O adhan deve tocar em 10 segundos|Adhan zabrzmi za 10 sekund",
   "Ayarlar kaydedildi, ezan yeniden kuruldu": "Ayarlar saxlandı, azan yenidən quruldu|آیارلار ساخلاندی، اذان یئنیدن قورولدو|تنظیمات ذخیره و اذان دوباره تنظیم شد|Settings saved, adhan rescheduled|تم الحفظ وإعادة ضبط الأذان|Настройки сохранены, азан перенастроен|Einstellungen gespeichert, Adhan neu geplant|Paramètres enregistrés, adhan reprogrammé|Ajustes guardados, adhan reprogramado|Impostazioni salvate, adhan riprogrammato|Configurações salvas, adhan reagendado|Ustawienia zapisane, adhan zaplanowany ponownie",
@@ -495,6 +516,20 @@ Future<void> scheduleAlarms() async {
   }
 }
 
+double qiblaBearing(double lat, double lng) {
+  const klat = 21.4225, klng = 39.8262; // Kâbe
+  final p1 = rad(lat), p2 = rad(klat), dl = rad(klng - lng);
+  final y = m.sin(dl) * m.cos(p2);
+  final x = m.cos(p1) * m.sin(p2) - m.sin(p1) * m.cos(p2) * m.cos(dl);
+  return (deg(m.atan2(y, x)) + 360) % 360;
+}
+
+double kaabaKm(double lat, double lng) {
+  const klat = 21.4225, klng = 39.8262;
+  final a = m.pow(m.sin(rad(klat - lat) / 2), 2) + m.cos(rad(lat)) * m.cos(rad(klat)) * m.pow(m.sin(rad(klng - lng) / 2), 2);
+  return 2 * 6371 * m.asin(m.sqrt(a));
+}
+
 String err = '';
 
 Future<void> sched(int id, String title, String body, tz.TZDateTime t, [NotificationDetails? d]) async {
@@ -521,7 +556,7 @@ Future<void> schedule(City c) async {
       if (tm[i].isNaN) continue;
       final at = day.add(Duration(minutes: (tm[i] * 60).round()));
       if (adhanIdx.contains(i) && at.isAfter(now)) {
-        await sched(id++, names[i], notifDate ? dateText(day) : '', tz.TZDateTime.from(at, tz.local), adhanDetails(snd[i] ?? defSound(), ct));
+        await sched(id++, names[i], notifDate ? dateText(day) : '', tz.TZDateTime.from(at, tz.local), adhanDetails(resFor(i), ct));
       }
       final rt = at.subtract(Duration(minutes: remindMin));
       if (remindIdx.contains(i) && rt.isAfter(now)) {
@@ -598,13 +633,15 @@ Future<void> saveBool(String k, bool v) async {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(AnimatedBuilder(
-      animation: Listenable.merge([themeMode, seedColor, langRev]),
+      animation: Listenable.merge([themeMode, seedColor, langRev, textScale]),
       builder: (_, __) => MaterialApp(
           title: 'تورک تقویمی و اذانی',
           theme: ThemeData(colorSchemeSeed: seedColor.value, useMaterial3: true),
           darkTheme: ThemeData(colorSchemeSeed: seedColor.value, brightness: Brightness.dark, useMaterial3: true),
           themeMode: themeMode.value,
-          builder: (c, w) => Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!),
+          builder: (c, w) => MediaQuery(
+              data: MediaQuery.of(c).copyWith(textScaler: TextScaler.linear(MediaQuery.textScalerOf(c).scale(1.0) * textScale.value)),
+              child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!)),
           home: const Home())));
 }
 
@@ -695,6 +732,9 @@ class _HomeState extends State<Home> {
       methodIdx = (p.getInt('method') ?? 0).clamp(0, methods.length - 1).toInt();
       remindMin = p.getInt('rmin') ?? 10;
       remindIdx = (p.getStringList('remind') ?? []).map(int.parse).toList();
+      textScale.value = p.getDouble('tscale') ?? 1.0;
+      final vj = p.getString('vol');
+      if (vj != null) vol = (jsonDecode(vj) as Map).map((k, v) => MapEntry(int.parse(k as String), v as int));
       final sj = p.getString('snd');
       if (sj != null) snd = (jsonDecode(sj) as Map).map((k, v) => MapEntry(int.parse(k as String), v as String));
       showTimes = p.getBool('showTimes') ?? true;
@@ -766,7 +806,7 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> openSettings() async {
-    final items = [T('Şehir seçimi'), T('Vakit ayarları'), T('Ana sayfa ve bildirimler'), T('Renk seçimi'), T('Dil')];
+    final items = [T('Şehir seçimi'), T('Vakit ayarları'), T('Ana sayfa ve bildirimler'), T('Renk seçimi'), T('Dil'), T('Yazı boyutu')];
     final r = await showDialog<int>(
         context: context,
         builder: (c) => SimpleDialog(title: const Tx('Uygulama ayarları'), children: [
@@ -780,7 +820,7 @@ class _HomeState extends State<Home> {
       await pickCity();
       return;
     }
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => r == 1 ? const PrayerSettingsPage() : (r == 4 ? const LanguagePage() : SettingsPage(section: r))));
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => r == 1 ? const PrayerSettingsPage() : (r == 4 ? const LanguagePage() : (r == 5 ? const TextSizePage() : SettingsPage(section: r)))));
     try {
       await schedule(city!);
       setState(() => msg = T('Ayarlar kaydedildi, ezan yeniden kuruldu'));
@@ -910,6 +950,9 @@ class _HomeState extends State<Home> {
         : (jal ? '${j[2]} ${mj[j[1] - 1]} ${j[0]}' : '${sel.day} ${mg[sel.month - 1]} ${sel.year}');
     return Scaffold(
       appBar: AppBar(title: const Text('تورک تقویمی و اذانی'), actions: [
+        IconButton(
+            icon: const Icon(Icons.explore),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QiblaPage(lat: city!.lat, lng: city!.lng, name: city!.name)))),
         IconButton(icon: const Icon(Icons.access_time), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClockPage()))),
         IconButton(icon: const Icon(Icons.settings), onPressed: openSettings),
       ]),
@@ -1217,6 +1260,13 @@ class _PrayerSettingsState extends State<PrayerSettingsPage> {
     if (r != null) upd(() => snd[i] = r);
   }
 
+  Future<void> testPrayer(int i) async {
+    try {
+      await sched(9990 + i, names[i], T('10 saniye sonra ezan çalmalı'), tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10)), adhanDetails(resFor(i)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(T('10 saniye sonra ezan çalmalı'))));
+    } catch (_) {}
+  }
+
   String label(int i) {
     final r = snd[i] ?? defSound();
     return muez.firstWhere((e) => e[0] == r, orElse: () => [r, r])[1];
@@ -1258,6 +1308,23 @@ class _PrayerSettingsState extends State<PrayerSettingsPage> {
             const ListTile(title: Tx('Müezzin')),
             for (final i in five)
               ListTile(title: Text(names[i]), trailing: FilledButton.tonal(onPressed: () => pickMuezzin(i), child: Text(label(i)))),
+            const Divider(),
+            const ListTile(title: Tx('Ezan ses seviyesi'), subtitle: Tx('Ses seviyesi telefonun alarm sesiyle birlikte çalışır')),
+            for (final i in five)
+              ListTile(
+                title: Text(names[i]),
+                subtitle: Slider(
+                    value: volLevels.indexOf(vol[i] ?? 100).toDouble(),
+                    min: 0,
+                    max: 4,
+                    divisions: 4,
+                    label: '${vol[i] ?? 100}%',
+                    onChanged: (v) => upd(() => vol[i] = volLevels[v.round()])),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${vol[i] ?? 100}%'),
+                  IconButton(icon: const Icon(Icons.play_arrow), onPressed: () => testPrayer(i)),
+                ]),
+              ),
             const Divider(),
             ListTile(
               title: const Tx('Hicri Kameri düzeltme (İran)'),
@@ -1455,6 +1522,176 @@ class _ClockState extends State<ClockPage> {
             ]),
           ),
         const SizedBox(height: 72),
+      ]),
+    );
+  }
+}
+
+class QiblaPainter extends CustomPainter {
+  final double heading, qibla;
+  final Color c, accent;
+  final bool aligned;
+  QiblaPainter(this.heading, this.qibla, this.c, this.accent, this.aligned);
+
+  void letter(Canvas canvas, String t, double r, Color col) {
+    final tp = TextPainter(text: TextSpan(text: t, style: TextStyle(color: col, fontSize: 20, fontWeight: FontWeight.bold)), textDirection: TextDirection.ltr)..layout();
+    tp.paint(canvas, Offset(-tp.width / 2, -r - tp.height / 2));
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.width / 2 - 24;
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.rotate(-heading * m.pi / 180);
+    canvas.drawCircle(Offset.zero, r, Paint()..color = c..style = PaintingStyle.stroke..strokeWidth = 4);
+    for (var i = 0; i < 36; i++) {
+      canvas.save();
+      canvas.rotate(i * m.pi / 18);
+      final len = i % 9 == 0 ? 16.0 : (i % 3 == 0 ? 11.0 : 6.0);
+      canvas.drawLine(Offset(0, -r), Offset(0, -r + len), Paint()..color = c..strokeWidth = 2);
+      canvas.restore();
+    }
+    letter(canvas, 'N', r + 14, Colors.red);
+    canvas.save();
+    canvas.rotate(m.pi / 2);
+    letter(canvas, 'E', r + 14, c);
+    canvas.restore();
+    canvas.save();
+    canvas.rotate(m.pi);
+    letter(canvas, 'S', r + 14, c);
+    canvas.restore();
+    canvas.save();
+    canvas.rotate(-m.pi / 2);
+    letter(canvas, 'W', r + 14, c);
+    canvas.restore();
+    // Kıble oku
+    canvas.rotate(qibla * m.pi / 180);
+    final col = aligned ? Colors.green : accent;
+    canvas.drawLine(Offset.zero, Offset(0, -r + 30), Paint()..color = col..strokeWidth = 6..strokeCap = StrokeCap.round);
+    final path = Path()
+      ..moveTo(0, -r + 6)
+      ..lineTo(-16, -r + 40)
+      ..lineTo(16, -r + 40)
+      ..close();
+    canvas.drawPath(path, Paint()..color = col);
+    canvas.drawRect(Rect.fromCenter(center: Offset(0, -r - 26), width: 26, height: 26), Paint()..color = Colors.black87);
+    canvas.drawRect(Rect.fromCenter(center: Offset(0, -r - 31), width: 26, height: 5), Paint()..color = const Color(0xFFD6A038));
+    canvas.restore();
+    // telefonun baktığı yön (sabit işaret)
+    final p = Path()
+      ..moveTo(size.width / 2, 4)
+      ..lineTo(size.width / 2 - 10, 24)
+      ..lineTo(size.width / 2 + 10, 24)
+      ..close();
+    canvas.drawPath(p, Paint()..color = col);
+    canvas.drawCircle(Offset(size.width / 2, size.height / 2), 6, Paint()..color = col);
+  }
+
+  @override
+  bool shouldRepaint(QiblaPainter o) => true;
+}
+
+class QiblaPage extends StatefulWidget {
+  final double lat, lng;
+  final String name;
+  const QiblaPage({super.key, required this.lat, required this.lng, required this.name});
+  @override
+  State<QiblaPage> createState() => _QiblaState();
+}
+
+class _QiblaState extends State<QiblaPage> {
+  bool wasAligned = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final q = qiblaBearing(widget.lat, widget.lng);
+    final km = kaabaKm(widget.lat, widget.lng).round();
+    final cs = Theme.of(context).colorScheme;
+    final stream = FlutterCompass.events;
+    return Scaffold(
+      appBar: AppBar(title: const Tx('Kıble')),
+      body: stream == null
+          ? ListView(padding: const EdgeInsets.all(24), children: [
+              const SizedBox(height: 40),
+              Center(child: Text('${q.toStringAsFixed(1)}°', style: Theme.of(context).textTheme.displayMedium)),
+              const SizedBox(height: 16),
+              const Center(child: Tx('Pusula sensörü bulunamadı')),
+            ])
+          : StreamBuilder<CompassEvent>(
+              stream: stream,
+              builder: (context, snap) {
+                final raw = snap.data?.heading;
+                final h = raw == null ? 0.0 : (raw + 360) % 360;
+                var diff = (q - h).abs() % 360;
+                if (diff > 180) diff = 360 - diff;
+                final aligned = raw != null && diff < 4;
+                if (aligned && !wasAligned) HapticFeedback.mediumImpact();
+                wasAligned = aligned;
+                return ListView(padding: const EdgeInsets.all(16), children: [
+                  Center(child: Text(widget.name, style: Theme.of(context).textTheme.titleMedium)),
+                  const SizedBox(height: 8),
+                  Center(child: SizedBox(width: 320, height: 320, child: CustomPaint(painter: QiblaPainter(h, q, cs.onSurface, cs.primary, aligned)))),
+                  const SizedBox(height: 8),
+                  Center(child: Text('${q.toStringAsFixed(1)}°', style: Theme.of(context).textTheme.displaySmall)),
+                  Center(child: Text('${T('Kâbe\'ye uzaklık')}: $km km')),
+                  const SizedBox(height: 12),
+                  Center(
+                      child: aligned
+                          ? Text(T('Kıble yönündesiniz'), style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold))
+                          : Text(T('Pusulayı kalibre etmek için telefonu 8 şeklinde hareket ettirin'), textAlign: TextAlign.center)),
+                ]);
+              },
+            ),
+    );
+  }
+}
+
+class TextSizePage extends StatefulWidget {
+  const TextSizePage({super.key});
+  @override
+  State<TextSizePage> createState() => _TextSizeState();
+}
+
+class _TextSizeState extends State<TextSizePage> {
+  Future<void> save() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setDouble('tscale', textScale.value);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Tx('Yazı boyutu')),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        Row(children: [
+          const Text('A', style: TextStyle(fontSize: 14)),
+          Expanded(
+              child: Slider(
+                  value: textScale.value,
+                  min: 0.8,
+                  max: 1.8,
+                  divisions: 10,
+                  label: '${(textScale.value * 100).round()}%',
+                  onChanged: (v) {
+                    textScale.value = v;
+                    setState(() {});
+                  },
+                  onChangeEnd: (_) => save())),
+          const Text('A', style: TextStyle(fontSize: 26)),
+        ]),
+        Center(child: Text('${(textScale.value * 100).round()}%')),
+        const SizedBox(height: 16),
+        const Card(child: Padding(padding: EdgeInsets.all(16), child: Tx('Örnek metin: Ezan vakitleri ve takvim'))),
+        TextButton(
+            onPressed: () {
+              textScale.value = 1.0;
+              setState(() {});
+              save();
+            },
+            child: const Tx('Sıfırla')),
       ]),
     );
   }
