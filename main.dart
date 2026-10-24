@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:math' as m;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle, HapticFeedback;
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -173,7 +174,7 @@ const irSolar = <String, String>{
   '1-1': '★Nevruz Bayramı', '1-2': '★Nevruz Bayramı', '1-3': '★Nevruz Bayramı', '1-4': '★Nevruz Bayramı',
   '1-12': '★İslam Cumhuriyeti Günü', '1-13': '★Sizdeh Bedar', '2-1': 'Sadi Günü', '2-25': 'Firdevsi Günü',
   '3-14': "★Humeyni'nin vefatı", '3-15': '★15 Hordad Kıyamı', '7-20': 'Hafız Günü', '8-13': 'Öğrenci Günü',
-  '9-16': 'Öğrenci Günü', '9-30': 'Yelda Gecesi', '7-26': "İmam Rıza'nın Nişabur'a gelişi / Beden Eğitimi ve Spor Günü", '11-22': '★İslam Devrimi Zaferi', '12-29': '★Petrol Sanayisinin Millileşmesi',
+  '9-16': 'Öğrenci Günü', '9-30': 'Yelda Gecesi - چیلله گئجه‌سی (شب یلدا)', '9-21': '۲۱ آذر قیامی (آذربایجان ملّی حؤکومتینین ایل دؤنومو)', '12-3': 'دونیا آنا دیلی گونو (۲۱ فورییه)', '6-27': 'شهریار آنما گونو (شعر و ادب گونو)', '4-2': 'صمد بهرنگینین دوغومو (۲ تیر)', '7-26': "İmam Rıza'nın Nişabur'a gelişi / Beden Eğitimi ve Spor Günü", '11-22': '★İslam Devrimi Zaferi', '12-29': '★Petrol Sanayisinin Millileşmesi',
 };
 const irLunar = <String, String>{
   '1-9': '★Tasua', '1-10': '★Aşura', '2-20': '★Erbain', '2-28': "★Hz. Peygamber'in vefatı ve İmam Hasan'ın şehadeti",
@@ -184,7 +185,7 @@ const irLunar = <String, String>{
 };
 const gFixed = <String, List<String>>{
   '1-1': ['TR ★Yılbaşı', 'AZ ★Yeni il bayramı'], '1-2': ['AZ ★Yeni il bayramı'], '1-20': ['AZ Ümumxalq Hüzn Günü'],
-  '3-8': ['TR Dünya Kadınlar Günü', 'AZ ★Beynəlxalq Qadınlar Günü'], '3-12': ["TR İstiklal Marşı'nın Kabulü"], '3-18': ['TR Çanakkale Zaferi'],
+  '2-21': ['Dünya Ana Dil Günü - دونیا آنا دیلی گونو'], '3-8': ['TR Dünya Kadınlar Günü', 'AZ ★Beynəlxalq Qadınlar Günü'], '3-12': ["TR İstiklal Marşı'nın Kabulü"], '3-18': ['TR Çanakkale Zaferi'],
   '3-20': ['AZ ★Novruz bayramı'], '3-21': ['AZ ★Novruz bayramı'], '3-22': ['AZ ★Novruz bayramı'], '3-23': ['AZ ★Novruz bayramı'], '3-24': ['AZ ★Novruz bayramı'],
   '4-23': ['TR ★Ulusal Egemenlik ve Çocuk Bayramı'], '5-1': ['TR ★Emek ve Dayanışma Günü'], '5-9': ['AZ ★Faşizm üzərində Qələbə Günü'],
   '5-19': ["TR ★Atatürk'ü Anma, Gençlik ve Spor Bayramı"], '5-28': ['AZ ★Müstəqillik Günü'], '6-15': ['AZ ★Milli Qurtuluş Günü'],
@@ -222,6 +223,12 @@ List<String> eventsFor(DateTime d, bool jal, [bool qam = false]) {
     final a = irSolar['${j[1]}-${j[2]}'], b = irLunar['${h[1]}-${h[2]}'];
     if (a != null) out.add(a);
     if (b != null) out.add(b);
+    if (d.weekday == DateTime.wednesday && j[1] >= 11) {
+      final diff = j2d(j[0] + 1, 1, 1) - g2d(d.year, d.month, d.day);
+      if (diff >= 1 && diff <= 28) {
+        out.add(const ['توریاق چارشنبه‌سی (چارشنبه سوری)', 'یئل چارشنبه‌سی', 'اؤد چارشنبه‌سی', 'سو چارشنبه‌سی'][(diff - 1) ~/ 7]);
+      }
+    }
   } else {
     final h = toH(d, 0);
     out.addAll(gFixed['${d.month}-${d.day}'] ?? const []);
@@ -314,6 +321,17 @@ const _t = <String, String>{
   "Örnek metin: Ezan vakitleri ve takvim": "Nümunə mətn: Azan vaxtları və təqvim|نمونه متن: اذان واختلاری و تقویم|متن نمونه: اوقات اذان و تقویم|Sample text: Prayer times and calendar|نص تجريبي: أوقات الأذان والتقويم|Пример текста: время намаза и календарь|Beispieltext: Gebetszeiten und Kalender|Texte d'exemple : horaires de prière et calendrier|Texto de ejemplo: horarios de oración y calendario|Testo di esempio: orari di preghiera e calendario|Texto de exemplo: horários de oração e calendário|Przykładowy tekst: czasy modlitw i kalendarz",
   "Ezan ses seviyesi": "Azan səs səviyyəsi|اذان سس سویه سی|میزان صدای اذان|Adhan volume|مستوى صوت الأذان|Громкость азана|Adhan-Lautstärke|Volume de l'adhan|Volumen del adhan|Volume dell'adhan|Volume do adhan|Głośność adhanu",
   "Ses seviyesi telefonun alarm sesiyle birlikte çalışır": "Səs səviyyəsi telefonun zəng səsi ilə birlikdə işləyir|سس سویه سی تلفونون آلارم سسی ایله بیرلیکده ایشله یر|میزان صدا همراه با صدای آلارم گوشی عمل می‌کند|Volume works together with the phone's alarm volume|يعمل مستوى الصوت مع مستوى صوت المنبه في الهاتف|Громкость работает вместе с громкостью будильника телефона|Die Lautstärke wirkt zusammen mit der Alarmlautstärke des Telefons|Le volume fonctionne avec le volume des alarmes du téléphone|El volumen funciona junto con el volumen de alarma del teléfono|Il volume agisce insieme al volume sveglia del telefono|O volume funciona junto com o volume de alarme do telefone|Głośność działa razem z głośnością alarmu telefonu",
+  "Hakkında": "Haqqında|هاقّیندا|درباره ما|About|حول|О приложении|Über|À propos|Acerca de|Informazioni|Sobre|O aplikacji",
+  "Ezan ve tarih bildirimi sorunları": "Azan və tarix bildirişi problemləri|اذان و تاریخ بیلدیریشی پروبلئملری|مشکلات پخش اذان و اعلان تاریخ|Adhan and date notification problems|مشاكل تشغيل الأذان وإشعار التاريخ|Проблемы с азаном и уведомлением о дате|Probleme mit Adhan und Datumsbenachrichtigung|Problèmes d'adhan et de notification de date|Problemas con el adhan y la notificación de fecha|Problemi con adhan e notifica della data|Problemas com o adhan e a notificação de data|Problemy z adhanem i powiadomieniem o dacie",
+  "Aç": "Aç|آچ|باز کردن|Open|فتح|Открыть|Öffnen|Ouvrir|Abrir|Apri|Abrir|Otwórz",
+  "Bildirimleri yeniden kur": "Bildirişləri yenidən qur|بیلدیریشلری یئنیدن قور|تنظیم دوباره اعلان‌ها|Reschedule notifications|إعادة ضبط الإشعارات|Перенастроить уведомления|Benachrichtigungen neu planen|Reprogrammer les notifications|Reprogramar notificaciones|Riprogramma le notifiche|Reagendar notificações|Zaplanuj powiadomienia ponownie",
+  "Takvim, ezan vakitleri, kıble ve çalar saat": "Təqvim, azan vaxtları, qiblə və zəngli saat|تقویم، اذان واختلاری، قبله و زنگلی ساعات|تقویم، اوقات اذان، قبله و ساعت زنگ‌دار|Calendar, prayer times, Qibla and alarm clock|تقويم وأوقات الأذان والقبلة والمنبه|Календарь, время намаза, кибла и будильник|Kalender, Gebetszeiten, Qibla und Wecker|Calendrier, horaires de prière, Qibla et réveil|Calendario, horarios de oración, Qibla y despertador|Calendario, orari di preghiera, Qibla e sveglia|Calendário, horários de oração, Qibla e despertador|Kalendarz, czasy modlitw, Kibla i budzik",
+  "Sürüm": "Versiya|نسخه|نسخه|Version|الإصدار|Версия|Version|Version|Versión|Versione|Versão|Wersja",
+  "Bildirim iznini açın": "Bildiriş icazəsini açın|بیلدیریش ایجازه سینی آچین|مجوز اعلان را روشن کنید|Turn on notification permission",
+  "Alarm ve hatırlatıcı iznini açın": "Zəng və xatırlatma icazəsini açın|آلارم و خاطیرلاتما ایجازه سینی آچین|مجوز آلارم و یادآور را روشن کنید|Allow alarms and reminders",
+  "Pil kullanımını \"Kısıtlama yok\" yapın": "Batareya istifadəsini \"Məhdudiyyətsiz\" edin|باتاریا ایستیفاده سینی «محدودیتسیز» ائدین|مصرف باتری را «بدون محدودیت» کنید|Set battery usage to \"Unrestricted\"",
+  "Alarm sesinin kapalı olmadığından emin olun": "Zəng səsinin söndürülmədiyinə əmin olun|آلارم سسینین سؤندورولمهدیگینه امین اولون|مطمئن شوید صدای آلارم خاموش نیست|Make sure the alarm volume is not muted",
+  "Uygulamanın arka planda çalışmasına izin verin (Xiaomi, Huawei, Samsung)": "Tətbiqin arxa fonda işləməsinə icazə verin (Xiaomi, Huawei, Samsung)|تطبیقین آرخا فوندا ایشله مه سینه ایجازه وئرین (Xiaomi, Huawei, Samsung)|اجازه دهید برنامه در پس‌زمینه اجرا شود (شیائومی، هوآوی، سامسونگ)|Allow the app to run in the background (Xiaomi, Huawei, Samsung)",
   "Ezan 14 gün için kuruldu": "Azan 14 gün üçün quruldu|اذان ۱۴ گون اوچون قورولدو|اذان برای ۱۴ روز تنظیم شد|Adhan set for 14 days|تم ضبط الأذان لمدة 14 يوماً|Азан настроен на 14 дней|Adhan für 14 Tage eingestellt|Adhan réglé pour 14 jours|Adhan configurado para 14 días|Adhan impostato per 14 giorni|Adhan definido para 14 dias|Adhan ustawiony na 14 dni",
   "10 saniye sonra ezan çalmalı": "10 saniyə sonra azan oxunmalıdır|۱۰ ثانیه سونرا اذان اوخونمالیدیر|اذان تا ۱۰ ثانیه دیگر پخش می‌شود|Adhan should play in 10 seconds|سيُشغَّل الأذان بعد 10 ثوانٍ|Азан прозвучит через 10 секунд|Adhan sollte in 10 Sekunden erklingen|L'adhan devrait retentir dans 10 secondes|El adhan sonará en 10 segundos|L'adhan dovrebbe partire tra 10 secondi|O adhan deve tocar em 10 segundos|Adhan zabrzmi za 10 sekund",
   "Ayarlar kaydedildi, ezan yeniden kuruldu": "Ayarlar saxlandı, azan yenidən quruldu|آیارلار ساخلاندی، اذان یئنیدن قورولدو|تنظیمات ذخیره و اذان دوباره تنظیم شد|Settings saved, adhan rescheduled|تم الحفظ وإعادة ضبط الأذان|Настройки сохранены, азан перенастроен|Einstellungen gespeichert, Adhan neu geplant|Paramètres enregistrés, adhan reprogrammé|Ajustes guardados, adhan reprogramado|Impostazioni salvate, adhan riprogrammato|Configurações salvas, adhan reagendado|Ustawienia zapisane, adhan zaplanowany ponownie",
@@ -528,6 +546,18 @@ double kaabaKm(double lat, double lng) {
   const klat = 21.4225, klng = 39.8262;
   final a = m.pow(m.sin(rad(klat - lat) / 2), 2) + m.cos(rad(lat)) * m.cos(rad(klat)) * m.pow(m.sin(rad(klng - lng) / 2), 2);
   return 2 * 6371 * m.asin(m.sqrt(a));
+}
+
+const appPkg = 'com.takvim.takvim';
+
+Future<void> openSys(String action, {String? data, Map<String, dynamic>? args}) async {
+  try {
+    await AndroidIntent(action: action, data: data, arguments: args).launch();
+  } catch (_) {
+    try {
+      await const AndroidIntent(action: 'android.settings.SETTINGS').launch();
+    } catch (_) {}
+  }
 }
 
 String err = '';
@@ -949,6 +979,57 @@ class _HomeState extends State<Home> {
         ? '${hs[2]} ${hn[hs[1] - 1]} ${hs[0]}'
         : (jal ? '${j[2]} ${mj[j[1] - 1]} ${j[0]}' : '${sel.day} ${mg[sel.month - 1]} ${sel.year}');
     return Scaffold(
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(children: [
+            const ListTile(
+                title: Text('تورک تقویمی و اذانی', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), subtitle: Text('v1.0')),
+            const Divider(),
+            ListTile(
+                leading: const Icon(Icons.nightlight_round),
+                title: const Tx('Vakit ayarları'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PrayerSettingsPage()));
+                }),
+            ListTile(
+                leading: const Icon(Icons.alarm),
+                title: const Tx('Çalar saat'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ClockPage()));
+                }),
+            ListTile(
+                leading: const Icon(Icons.explore),
+                title: const Tx('Kıble'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => QiblaPage(lat: city!.lat, lng: city!.lng, name: city!.name)));
+                }),
+            const Divider(),
+            ListTile(
+                leading: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                title: const Tx('Ezan ve tarih bildirimi sorunları', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => TroublePage(onReset: () async {
+                                await schedule(city!);
+                                if (mounted) setState(() => msg = T('Ezan 14 gün için kuruldu'));
+                              })));
+                }),
+            ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Tx('Hakkında'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutPage()));
+                }),
+          ]),
+        ),
+      ),
       appBar: AppBar(title: const Text('تورک تقویمی و اذانی'), actions: [
         IconButton(
             icon: const Icon(Icons.explore),
@@ -1693,6 +1774,61 @@ class _TextSizeState extends State<TextSizePage> {
             },
             child: const Tx('Sıfırla')),
       ]),
+    );
+  }
+}
+
+class TroublePage extends StatelessWidget {
+  final Future<void> Function() onReset;
+  const TroublePage({super.key, required this.onReset});
+
+  Widget step(String text, String action, {String? data, Map<String, dynamic>? args}) => Card(
+        child: ListTile(
+          title: Text(T(text)),
+          trailing: FilledButton.tonal(onPressed: () => openSys(action, data: data, args: args), child: const Tx('Aç')),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Tx('Ezan ve tarih bildirimi sorunları')),
+      body: ListView(padding: const EdgeInsets.all(12), children: [
+        step('Bildirim iznini açın', 'android.settings.APP_NOTIFICATION_SETTINGS', args: {'android.provider.extra.APP_PACKAGE': appPkg}),
+        step('Alarm ve hatırlatıcı iznini açın', 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM', data: 'package:$appPkg'),
+        step('Pil kullanımını "Kısıtlama yok" yapın', 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'),
+        step('Alarm sesinin kapalı olmadığından emin olun', 'android.settings.SOUND_SETTINGS'),
+        step('Uygulamanın arka planda çalışmasına izin verin (Xiaomi, Huawei, Samsung)', 'android.settings.APPLICATION_DETAILS_SETTINGS', data: 'package:$appPkg'),
+        const SizedBox(height: 12),
+        FilledButton(
+            onPressed: () async {
+              await onReset();
+              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(T('Ezan 14 gün için kuruldu'))));
+            },
+            child: const Tx('Bildirimleri yeniden kur')),
+      ]),
+    );
+  }
+}
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Tx('Hakkında')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(children: [
+          const SizedBox(height: 24),
+          const Text('تورک تقویمی و اذانی', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('${T('Sürüm')} 1.0'),
+          const SizedBox(height: 16),
+          const Tx('Takvim, ezan vakitleri, kıble ve çalar saat', style: TextStyle(fontSize: 16)),
+        ]),
+      ),
     );
   }
 }

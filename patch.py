@@ -126,3 +126,10 @@ ps2 = open('pubspec.yaml', encoding='utf-8').read()
 if 'flutter_compass' not in ps2:
     ps2 = ps2.replace('  shared_preferences: ^2.3.2', '  shared_preferences: ^2.3.2\n  flutter_compass: ^0.8.1')
     open('pubspec.yaml', 'w', encoding='utf-8').write(ps2)
+
+
+# Sistem ayarlarını açmak için gerekli paket
+ps3 = open('pubspec.yaml', encoding='utf-8').read()
+if 'android_intent_plus' not in ps3:
+    ps3 = ps3.replace('  shared_preferences: ^2.3.2', '  shared_preferences: ^2.3.2\n  android_intent_plus: ^5.1.0')
+    open('pubspec.yaml', 'w', encoding='utf-8').write(ps3)
