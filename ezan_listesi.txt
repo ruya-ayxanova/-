@@ -1,0 +1,9 @@
+# EZAN SESLERI LISTESI
+# Her satir:  Ad|dogrudan ses dosyasi baglantisi
+# Uygulama derlenirken bu dosyalar internetten indirilir, mp3'e cevrilir ve
+# Vakit ayarlari > Muezzin listesinde gorunur. Satirin basina # koyarsan atlanir.
+#
+# Ornek (ornek baglanti, calismaz):
+# Kahire_Seyh_Ahmed|https://ornek.com/ezan.mp3
+#
+# Kullanim kosullarini kontrol et: sadece indirmesi ve kisisel kullanimi serbest olan kayitlari ekle.
